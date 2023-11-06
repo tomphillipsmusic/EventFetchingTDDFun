@@ -28,7 +28,11 @@ class EventService {
     }
     
     func fetchDates(between startDate: Date, and endDate: Date) -> [Event] {
-        return store.events(between: startDate, and: endDate)
+        let fetchedEvents = store.events(between: startDate, and: endDate)
+        
+        return fetchedEvents.filter {
+            ($0.endDate > startDate && $0.endDate < endDate) || ($0.startDate < endDate && $0.startDate > startDate)
+        }
     }
 }
 
@@ -49,7 +53,7 @@ final class EventFetcherTests: XCTestCase {
         XCTAssertEqual(scheduledEvents, [Event]())
     }
     
-    func test_fetchEvents_returnsAllScheduledEventsInTheGivenDateRange() {
+    func test_fetchEvents_returnsAllScheduledEventsIfAllEventsAreInTheGivenDateRange() {
         let allScheduledEvents = allScheduledEvents()
         let store = MockEventStore(scheduledEvents: allScheduledEvents)
         let sut = EventService(store: store)
@@ -59,6 +63,18 @@ final class EventFetcherTests: XCTestCase {
         
         let scheduledEvents = sut.fetchDates(between: startDate, and: endDate)
         XCTAssertEqual(scheduledEvents, allScheduledEvents)
+    }
+    
+    func test_fetchEvents_returnsOnlyScheduledEventsInTheGivenDateRange() {
+        let allScheduledEvents = allScheduledEvents()
+        let store = MockEventStore(scheduledEvents: allScheduledEvents)
+        let sut = EventService(store: store)
+    
+        let startDate = makeDate(hour: 6, minute: 0)
+        let endDate = makeDate(hour: 9, minute: 0)
+        
+        let scheduledEvents = sut.fetchDates(between: startDate, and: endDate)
+        XCTAssertEqual(scheduledEvents, [allScheduledEvents[0]])
     }
     
     // MARK: Helper Methods

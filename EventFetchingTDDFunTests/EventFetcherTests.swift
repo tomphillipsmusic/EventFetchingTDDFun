@@ -42,8 +42,8 @@ final class EventFetcherTests: XCTestCase {
     func test_fetchEvents_returnsEmptyIfNoDatesScheduledInGivenRange() {
         let store = MockEventStore(scheduledEvents: [])
         let sut = EventService(store: store)
-        let startDate = Calendar.autoupdatingCurrent.date(bySettingHour: 8, minute: 0, second: 0, of: Date())!
-        let endDate = Calendar.autoupdatingCurrent.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
+        let startDate = makeDate(hour: 8, minute: 0)
+        let endDate = makeDate(hour: 12, minute: 0)
         
         let scheduledEvents = sut.fetchDates(between: startDate, and: endDate)
         XCTAssertEqual(scheduledEvents, [Event]())
@@ -53,9 +53,9 @@ final class EventFetcherTests: XCTestCase {
         let allScheduledEvents = allScheduledEvents()
         let store = MockEventStore(scheduledEvents: allScheduledEvents)
         let sut = EventService(store: store)
-        
-        let startDate = Calendar.autoupdatingCurrent.date(bySettingHour: 8, minute: 0, second: 0, of: Date())!
-        let endDate = Calendar.autoupdatingCurrent.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
+    
+        let startDate = makeDate(hour: 8, minute: 0)
+        let endDate = makeDate(hour: 12, minute: 0)
         
         let scheduledEvents = sut.fetchDates(between: startDate, and: endDate)
         XCTAssertEqual(scheduledEvents, allScheduledEvents)
@@ -64,9 +64,13 @@ final class EventFetcherTests: XCTestCase {
     // MARK: Helper Methods
     private func makeEvent(startDate: (hour: Int, minute: Int), endDate: (hour: Int, minute: Int)) -> Event {
         Event(
-            startDate: Calendar.autoupdatingCurrent.date(bySettingHour: startDate.hour, minute: startDate.minute, second: 0, of: Date())!,
-            endDate: Calendar.autoupdatingCurrent.date(bySettingHour: endDate.hour, minute: endDate.minute, second: 0, of: Date())!
+            startDate: makeDate(hour: startDate.hour, minute: startDate.minute),
+            endDate: makeDate(hour: endDate.hour, minute: endDate.minute)
         )
+    }
+    
+    private func makeDate(hour: Int, minute: Int) -> Date {
+        Calendar.autoupdatingCurrent.date(bySettingHour: hour, minute: minute, second: 0, of: Date())!
     }
     
     private func allScheduledEvents() -> [Event] {

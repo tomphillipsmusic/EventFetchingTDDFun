@@ -11,15 +11,33 @@ import EventKit
 protocol EventStore {
     func events(between startDate: Date, and endDate: Date) -> [Event]
     func connect() -> Bool
+    func remove(_ event: Event) throws
+    func event(withIdentifier identifier: String) -> Event?
 }
 
-struct MockEventStore: EventStore {
+class MockEventStore: EventStore {
+    func remove(_ event: Event) throws {
+        scheduledEvents.removeAll { $0.id == event.id
+        }
+    }
+    
+    func event(withIdentifier identifier: String) -> Event? {
+        scheduledEvents.first { event in
+            event.id == identifier
+        }
+    }
+    
     func connect() -> Bool {
         return willConnect
     }
     
-    let scheduledEvents: [Event]
-    var willConnect: Bool = true
+    private var scheduledEvents: [Event]
+    private var willConnect: Bool = true
+    
+    init(scheduledEvents: [Event], willConnect: Bool = true) {
+        self.scheduledEvents = scheduledEvents
+        self.willConnect = willConnect
+    }
     
     func events(between startDate: Date, and endDate: Date) -> [Event] {
         scheduledEvents
@@ -48,14 +66,21 @@ class EventService {
             ($0.endDate > startDate && $0.endDate < endDate) || ($0.startDate < endDate && $0.startDate > startDate)
         }
     }
+    
+    func removeEvent(matching id: String) {
+        if let event = store.event(withIdentifier: id) {
+            try? store.remove(event)
+        }
+    }
 }
 
 struct Event: Equatable {
     let startDate: Date
     let endDate: Date
+    let id = UUID().uuidString
 }
 
-final class EventFetcherTests: XCTestCase {
+final class EventServiceTests: XCTestCase {
 
     func test_fetchEvents_returnsEmptyIfNoDatesScheduledInGivenRange() {
         let store = MockEventStore(scheduledEvents: [])
@@ -96,6 +121,20 @@ final class EventFetcherTests: XCTestCase {
     func test_fetchEvents_throwsNoConnectionToEventStoreErrorIfEventsAreNotAbleToBeFetched() {
         let store = MockEventStore(scheduledEvents: [], willConnect: false)
         XCTAssertThrowsError(try EventService(store: store))
+    }
+    
+    func test_remove_removesEventFromEventStoreMatchingGivenId() {
+        let originalScheduledEvents = allScheduledEvents()
+        let eventToRemove = Event(startDate: makeDate(hour: 8, minute: 0), endDate: makeDate(hour: 9, minute: 0))
+        let allScheduledEvents = originalScheduledEvents + [eventToRemove]
+        let idToDelete = eventToRemove.id
+        let store = MockEventStore(scheduledEvents: allScheduledEvents)
+        let sut = try! EventService(store: store)
+
+        sut.removeEvent(matching: idToDelete)
+        let allEventsAfterRemoval = sut.fetchDates(between: .distantPast, and: .distantFuture)
+        
+        XCTAssertEqual(allEventsAfterRemoval, originalScheduledEvents)
     }
     
     // MARK: Helper Methods
